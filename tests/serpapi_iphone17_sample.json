@@ -1,0 +1,25 @@
+{
+  "search_metadata": {"status": "Success"},
+  "search_parameters": {"engine": "google_shopping", "q": "iphone 17", "gl": "in"},
+  "shopping_results": [
+    {"position": 1, "title": "Apple iPhone 17 256 GB: 6.3-inch Display with ProMotion, A19 Chip, Center Stage Front Camera; Lavender",
+     "source": "Amazon.in", "price": "₹82,900.00", "extracted_price": 82900, "rating": 4.5, "reviews": 1843,
+     "product_link": "https://www.google.com/shopping/product/1"},
+    {"position": 2, "title": "Apple iPhone 17 (Lavender, 256 GB)", "source": "Flipkart", "price": "₹79,900.00",
+     "extracted_price": 79900, "old_price": "₹82,900.00", "extracted_old_price": 82900, "rating": 4.6, "reviews": 25410},
+    {"position": 3, "title": "Apple iPhone 17 256GB Mist Blue", "source": "Croma", "price": "₹82,900.00", "extracted_price": 82900},
+    {"position": 4, "title": "iPhone 17 256GB Black", "source": "Reliance Digital", "price": "₹81,490.00", "extracted_price": 81490},
+    {"position": 5, "title": "Apple iPhone 17 Pro 256GB Cosmic Orange", "source": "Amazon.in", "extracted_price": 134900},
+    {"position": 6, "title": "Apple iPhone 17 512 GB Sage", "source": "Flipkart", "extracted_price": 102900},
+    {"position": 7, "title": "Spigen Ultra Hybrid Case for iPhone 17", "source": "Amazon.in", "extracted_price": 1299},
+    {"position": 8, "title": "Apple iPhone 17 (256 GB) - Black (Renewed)", "source": "Amazon.in", "extracted_price": 69999},
+    {"position": 9, "title": "Apple iPhone 16 128 GB Ultramarine", "source": "Croma", "extracted_price": 69900}
+  ],
+  "categorized_shopping_results": [
+    {"title": "More stores", "shopping_results": [
+      {"title": "Apple iPhone 17 512GB - Lavender", "source": "Vijay Sales", "price": "₹1,02,900", "extracted_price": 102900},
+      {"title": "Apple iPhone 17 (256GB) Mist Blue", "source": "Vijay Sales", "price": "₹81,900", "extracted_price": 81900}
+    ]}
+  ],
+  "filters": [{"type": "Price", "options": [{"text": "Up to ₹50,000"}]}]
+}
