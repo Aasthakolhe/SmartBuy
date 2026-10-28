@@ -45,6 +45,45 @@ CREATE TABLE IF NOT EXISTS tracked_urls (
 """
 
 
+# --- text repair (mojibake like "à¤ à¤ªà¥à¤ªà¤²" -> "ऐप्पल") ------------------
+def _to_bytes(text: str) -> bytes:
+    """Turn a mis-decoded string back into the original bytes (cp1252 first, then latin-1)."""
+    out = bytearray()
+    for ch in text:
+        try:
+            out += ch.encode("cp1252")
+        except UnicodeEncodeError:
+            if ord(ch) < 256:
+                out.append(ord(ch))
+            else:
+                raise
+    return bytes(out)
+
+
+def fix_mojibake(text):
+    """Repair UTF-8 text that was wrongly decoded as cp1252/latin-1. Safe on normal text."""
+    if not isinstance(text, str) or text.isascii():
+        return text
+    if not any("\u00c2" <= ch <= "\u00f4" for ch in text):   # markers: Ã Â à â ...
+        return text
+    try:
+        fixed = _to_bytes(text).decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return text
+    return fixed if len(fixed) < len(text) else text
+
+
+def fix_payload(obj):
+    """Apply fix_mojibake to every string inside nested dict/list data."""
+    if isinstance(obj, str):
+        return fix_mojibake(obj)
+    if isinstance(obj, list):
+        return [fix_payload(x) for x in obj]
+    if isinstance(obj, dict):
+        return {k: fix_payload(v) for k, v in obj.items()}
+    return obj
+
+
 def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(config.DB_PATH)
     conn.executescript(SCHEMA)
@@ -56,7 +95,7 @@ def log_offers(offers: list[dict], query: str = "") -> int:
     if not offers:
         return 0
     ts = datetime.now().isoformat(timespec="seconds")
-    rows = [(ts, query, o.get("product_key"), o["title"], o["store"], float(o["price"]),
+    rows = [(ts, query, o.get("product_key"), fix_mojibake(o["title"]), o["store"], float(o["price"]),
              o.get("mrp"), o.get("rating"), o.get("reviews"), o.get("url"), o.get("source"))
             for o in offers if o.get("price")]
     with closing(_connect()) as conn, conn:
@@ -64,6 +103,33 @@ def log_offers(offers: list[dict], query: str = "") -> int:
             "INSERT INTO price_log (ts, query, product_key, title, store, price, mrp, rating, "
             "reviews, url, source) VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows)
     return len(rows)
+
+
+def repair_mojibake_rows() -> int:
+    """One-off cleanup: fix garbled titles already saved in the price log."""
+    with closing(_connect()) as conn, conn:
+        rows = conn.execute("SELECT id, title FROM price_log").fetchall()
+        fixes = []
+        for row_id, title in rows:
+            new = fix_mojibake(title)
+            if new != title:
+                fixes.append((new, row_id))
+        if fixes:
+            conn.executemany("UPDATE price_log SET title = ? WHERE id = ?", fixes)
+    return len(fixes)
+
+
+def past_searches() -> list[str]:
+    """Search texts and product titles seen before (used for search suggestions)."""
+    out: list[str] = []
+    try:
+        with closing(_connect()) as conn:
+            out += [r[0] for r in conn.execute(
+                "SELECT DISTINCT query FROM price_log WHERE query IS NOT NULL AND query NOT IN ('', 'url')")]
+            out += [r[0] for r in conn.execute("SELECT DISTINCT title FROM price_log LIMIT 1500")]
+    except sqlite3.Error:
+        pass
+    return [fix_mojibake(t) for t in out if t]
 
 
 def get_log(limit: int | None = None) -> pd.DataFrame:
@@ -130,13 +196,14 @@ def cache_get(key: str, max_age_hours: float):
         return None
     if datetime.fromisoformat(row[0]) < datetime.now() - timedelta(hours=max_age_hours):
         return None
-    return json.loads(row[1])
+    return fix_payload(json.loads(row[1]))
 
 
 def cache_put(key: str, payload) -> None:
     with closing(_connect()) as conn, conn:
         conn.execute("INSERT OR REPLACE INTO api_cache (cache_key, ts, payload) VALUES (?,?,?)",
-                     (key, datetime.now().isoformat(timespec="seconds"), json.dumps(payload)))
+                     (key, datetime.now().isoformat(timespec="seconds"),
+                      json.dumps(fix_payload(payload), ensure_ascii=False)))
 
 
 def clear_cache() -> None:

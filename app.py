@@ -91,7 +91,32 @@ def first_run_setup():
 first_run_setup()
 advisor = get_advisor()
 metrics = advisor.metrics
-saved_key = config.get_serpapi_key()
+def _valid_key(v) -> bool:
+    v = str(v or "").strip()
+    return len(v) >= 30 and "your" not in v.lower()   # ignores placeholders from secrets.toml.example
+
+
+def resolve_serpapi_key() -> str:
+    """Find the SerpAPI key without typing: Streamlit secrets -> environment -> config.py."""
+    names = ("SERPAPI_KEY", "SERPAPI_API_KEY", "serpapi_key", "SERPAPI")
+    try:
+        for n in names:
+            if _valid_key(st.secrets.get(n)):
+                return str(st.secrets[n]).strip()
+    except Exception:
+        pass
+    for n in names:
+        if _valid_key(os.getenv(n)):
+            return os.getenv(n).strip()
+    try:
+        if _valid_key(config.get_serpapi_key()):
+            return config.get_serpapi_key().strip()
+    except Exception:
+        pass
+    return ""
+
+
+saved_key = resolve_serpapi_key()
 
 # ---------------------------------------------------------------------------
 # Sidebar
